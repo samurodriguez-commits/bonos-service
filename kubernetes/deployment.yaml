@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bonos-service
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: bonos-service
+
+  template:
+    metadata:
+      labels:
+        app: bonos-service
+
+    spec:
+      containers:
+      - name: bonos-service
+
+        image: TU_ECR/bonos-service:latest
+
+        ports:
+        - containerPort: 8004
+
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8004
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: 8004
+          initialDelaySeconds: 10
+          periodSeconds: 15
+
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "500m"
