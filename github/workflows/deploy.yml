@@ -1,0 +1,66 @@
+name: Deploy bonos-service
+
+on:
+  push:
+    branches:
+      - deploy
+
+jobs:
+  build-test-push-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Build image
+        run: |
+          docker build -t bonos-service:${{ github.sha }} .
+
+      - name: Push image
+        run: |
+          docker tag bonos-service:${{ github.sha }} \
+          ${{ steps.login-ecr.outputs.registry }}/bonos-service:${{ github.sha }}
+          docker tag bonos-service:${{ github.sha }} \
+          ${{ steps.login-ecr.outputs.registry }}/bonos-service:latest
+          docker push \
+          ${{ steps.login-ecr.outputs.registry }}/bonos-service:${{ github.sha }}
+          docker push \
+          ${{ steps.login-ecr.outputs.registry }}/bonos-service:latest
+
+      - name: kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+          --name casino-cluster \
+          --region ${{ secrets.AWS_REGION }}
+
+      - name: Secret
+        run: |
+          kubectl create secret generic casino-secrets \
+          --from-literal=DB_URL='${{ secrets.DB_URL }}' \
+          --from-literal=DB_USER='${{ secrets.DB_USER }}' \
+          --from-literal=DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+          --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy
+        run: |
+          kubectl apply -f kubernetes/
+          kubectl rollout restart deployment/bonos-service
