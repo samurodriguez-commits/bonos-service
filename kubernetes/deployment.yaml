@@ -19,8 +19,7 @@ spec:
     spec:
       containers:
       - name: bonos-service
-        image:
-          546388928625.dkr.ecr.us-east-1.amazonaws.com/bonos-service:latest
+        image: 546388928625.dkr.ecr.us-east-1.amazonaws.com/bonos-service:latest
 
         ports:
         - containerPort: 8004
@@ -32,7 +31,6 @@ spec:
         resources:
           requests:
             cpu: "100m"
-
           limits:
             cpu: "500m"
 
@@ -40,14 +38,12 @@ spec:
           httpGet:
             path: /readyz
             port: 8004
-
-          initialDelaySeconds:5
-          periodSeconds:10
+          initialDelaySeconds: 5
+          periodSeconds: 10
 
         livenessProbe:
           httpGet:
-            path:/livez
-            port:8004
-
-          initialDelaySeconds:10
-          periodSeconds:15
+            path: /livez
+            port: 8004
+          initialDelaySeconds: 10
+          periodSeconds: 15
